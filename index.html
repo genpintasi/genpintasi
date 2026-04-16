@@ -125,7 +125,7 @@ body {
 
 .star-icon { color: var(--gold); margin: 0 5px; }
 
-/* 響應式容器：核心縮放機制 */
+/* 無縫預覽容器：教材預覽、電子書 */
 .seamless-preview-box {
   max-width: 1100px;
   margin: 0 auto 40px;
@@ -141,10 +141,10 @@ body {
 .poster-frame-container {
   max-width: 1000px;
   margin: 0 auto 40px;
-  background: var(--white); /* 白色襯底 */
+  background: var(--white);
   border-radius: clamp(16px, 3vw, 32px);
   box-shadow: var(--shadow);
-  padding: clamp(15px, 4vw, 45px); /* 四周按比例留白 */
+  padding: clamp(15px, 4vw, 45px);
   width: 100%;
   display: flex;
   justify-content: center;
@@ -159,21 +159,11 @@ body {
   background: transparent;
 }
 
-/* 不同檔案的高度比例校準 */
-#feature-iframe {
-  height: clamp(450px, 75vw, 900px);
-}
+#feature-iframe { height: clamp(450px, 75vw, 900px); }
+#selection-iframe { height: clamp(600px, 136vw, 1360px); }
+#ebook-iframe { height: clamp(400px, 70vw, 800px); }
 
-#selection-iframe {
-  /* 鎖定海報長寬比，確保與外框留白同步縮放 */
-  height: clamp(600px, 136vw, 1360px); 
-}
-
-#ebook-iframe {
-  height: clamp(400px, 70vw, 800px);
-}
-
-/* 獨家推出：無縫拼接圖片 */
+/* 獨家推出 */
 .exclusive-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -191,7 +181,7 @@ body {
   display: block;
 }
 
-/* 網格卡片 */
+/* 網格系統 */
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 45%, 250px), 1fr));
@@ -226,20 +216,8 @@ body {
   object-fit: cover;
 }
 
-.card h3, .res-card h3 { 
-  margin: 15px 0 8px; 
-  padding: 0 15px; 
-  font-size: clamp(1rem, 2.5vw, 1.15rem); 
-}
-
-.card p, .res-card p { 
-  margin: 0 0 15px; 
-  padding: 0 15px; 
-  line-height: 1.5; 
-  color: var(--muted); 
-  font-size: 0.9rem;
-  flex-grow: 1;
-}
+.card h3, .res-card h3 { margin: 15px 0 8px; padding: 0 15px; font-size: clamp(1rem, 2.5vw, 1.15rem); }
+.card p, .res-card p { margin: 0 0 15px; padding: 0 15px; line-height: 1.5; color: var(--muted); font-size: 0.9rem; flex-grow: 1; }
 
 .video-frame { 
   aspect-ratio: 16/9; 
@@ -272,12 +250,13 @@ body {
 
 @media (max-width: 480px) {
   .navbar { padding: 0 10px; }
-  .nav-btn { padding: 6px 4px; border-radius: 4px; }
+  .nav-btn { padding: 6px 4px; }
   .section { padding: 30px 15px; }
-  .exclusive-grid { border-radius: 8px; }
-  .poster-frame-container { padding: 12px; } /* 手機版留白略縮 */
+  .poster-frame-container { padding: 12px; }
 }
 </style>
+<!-- 載入 YouTube API -->
+<script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body onclick="initAudio()">
 
@@ -320,7 +299,7 @@ body {
   </div>
 </section>
 
-<!-- 必選理由：具備比例空白的海報展示區 -->
+<!-- 必選理由 -->
 <section class="section" style="background: #edf2f7;">
   <h2 id="selection-title">必選理由</h2>
   <p id="selection-intro" class="section-intro"></p>
@@ -330,7 +309,7 @@ body {
   <div class="feature-grid" id="selection-grid"></div>
 </section>
 
-<!-- 電子書試閱 -->
+<!-- 電子書 -->
 <section class="section" style="background: var(--white)">
   <h2>電子書試閱</h2>
   <p id="ebook-note" class="muted" style="margin-bottom: 20px;"></p>
@@ -339,12 +318,12 @@ body {
   </div>
 </section>
 
-<!-- 影片 -->
+<!-- 影片：透過 API 控制 -->
 <section class="section">
   <h2>教材演示影片</h2>
   <p id="video-intro" class="section-intro"></p>
   <div class="seamless-preview-box" style="border-radius: clamp(12px, 3vw, 22px); box-shadow: var(--shadow); background: #000;">
-    <iframe id="video-iframe" class="video-frame" src="" allowfullscreen></iframe>
+    <div id="yt-player-placeholder" class="video-frame"></div>
   </div>
 </section>
 
@@ -361,13 +340,47 @@ body {
 </div>
 
 <script>
-// 音訊點擊啟動
-document.addEventListener('click', function() {
-    const audio = document.getElementById('bgMusic');
-    if (audio && audio.paused) {
-        audio.play().catch(e => {});
+let ytPlayer;
+let bgMusic = document.getElementById('bgMusic');
+let audioInitialized = false;
+
+// YouTube API 準備就緒
+function onYouTubeIframeAPIReady() {
+  ytPlayer = new YT.Player('yt-player-placeholder', {
+    height: '100%',
+    width: '100%',
+    videoId: 'VBRzshxvUUc', // 初始影片 ID (國小)
+    playerVars: {
+      'rel': 0,
+      'modestbranding': 1,
+      'enablejsapi': 1
+    },
+    events: {
+      'onStateChange': onPlayerStateChange
     }
-}, { once: true });
+  });
+}
+
+// 監測影片播放狀態
+function onPlayerStateChange(event) {
+  // YT.PlayerState.PLAYING = 1
+  if (event.data == YT.PlayerState.PLAYING) {
+    if (bgMusic) bgMusic.pause();
+  } 
+  // YT.PlayerState.PAUSED = 2, YT.PlayerState.ENDED = 0
+  else if (event.data == YT.PlayerState.PAUSED || event.data == YT.PlayerState.ENDED) {
+    if (bgMusic && audioInitialized) bgMusic.play();
+  }
+}
+
+function initAudio() {
+  if (audioInitialized) return;
+  if (bgMusic && bgMusic.paused) {
+    bgMusic.play().then(() => {
+      audioInitialized = true;
+    }).catch(e => console.log("音訊啟動需使用者互動"));
+  }
+}
 
 const scenarioImg = "https://cdn.phototourl.com/free/2026-04-02-4edcea49-9c9f-45b7-9741-e5068be1c6db.png";
 const gameInteractionImg = "https://cdn.phototourl.com/free/2026-04-02-141c2874-2e7e-499a-a199-1e00dee3e4d0.png";
@@ -393,7 +406,7 @@ const contentData = {
     ebookNote: "以閩南語第三冊電子書為例",
     ebookIframe: "https://ebook.jen-pin.com.tw/112-p-tai-book-03-tr/",
     videoIntro: "國小閩南語教材演示影片。",
-    videoSrc: "https://www.youtube-nocookie.com/embed/VBRzshxvUUc?rel=0",
+    ytId: "VBRzshxvUUc",
     resourceIntro: "下方整理的是國小專屬數位資源。",
     resources: [
       { badge: "閩南語資源", title: "真平數位網", desc: "備課不再燒腦，所有資源一站式搞定。", link: "https://storage.googleapis.com/jen-pin-marketing-page/2026/index.html", img: "https://storage.googleapis.com/jen-pin-marketing-page/2026/res/%E5%BF%AB%E6%A8%82%E5%B0%8F%E8%A1%8C%E6%98%9F.png" },
@@ -417,7 +430,7 @@ const contentData = {
     ebookNote: "以國中閩南語第一冊電子書為例",
     ebookIframe: "https://ebook.jen-pin.com.tw/112-jr-tai-book-01-tr/",
     videoIntro: "國中閩南語教材演示影片。",
-    videoSrc: "https://www.youtube-nocookie.com/embed/7FnLKBKUkUc?rel=0",
+    ytId: "7FnLKBKUkUc",
     resourceIntro: "下方整理的是國中專屬數位資源。",
     resources: [
       { badge: "閩南語資源", title: "真平數位網", desc: "省下繁瑣備課時間，把精彩留給課堂。", link: "https://storage.googleapis.com/jen-pin-marketing-page/2026/index.html", img: "https://storage.googleapis.com/jen-pin-marketing-page/2026/res/%E5%BF%AB%E6%A8%82%E5%B0%8F%E8%A1%8C%E6%98%9F.png" },
@@ -441,7 +454,7 @@ const contentData = {
     ebookNote: "以高中第一冊電子書為例",
     ebookIframe: "https://ebook.jen-pin.com.tw/113-sh-tai-book-all-tr/",
     videoIntro: "高中閩南語教材演示影片。",
-    videoSrc: "https://www.youtube-nocookie.com/embed/DbQmAUwsQPE?rel=0",
+    ytId: "DbQmAUwsQPE",
     resourceIntro: "下方整理的是高中專屬數位資源。",
     resources: [
       { badge: "資源中心", title: "真平數位網", desc: "為高中老師量身打造的雲端教學資源平台。", link: "https://storage.googleapis.com/jen-pin-marketing-page/2026/index.html", img: "https://storage.googleapis.com/jen-pin-marketing-page/2026/res/%E5%BF%AB%E6%A8%82%E5%B0%8F%E8%A1%8C%E6%98%9F.png" },
@@ -450,11 +463,6 @@ const contentData = {
     ]
   }
 };
-
-function initAudio() {
-  const music = document.getElementById('bgMusic');
-  if (music && music.paused) music.play().catch(e => {});
-}
 
 function switchContent(level) {
   const data = contentData[level];
@@ -482,7 +490,11 @@ function switchContent(level) {
   document.getElementById('ebook-note').innerText = data.ebookNote;
   document.getElementById('ebook-iframe').src = data.ebookIframe;
   document.getElementById('video-intro').innerText = data.videoIntro;
-  document.getElementById('video-iframe').src = data.videoSrc;
+  
+  // 更新 YouTube 影片內容
+  if (ytPlayer && typeof ytPlayer.cueVideoById === 'function') {
+    ytPlayer.cueVideoById(data.ytId);
+  }
 
   document.getElementById('resource-intro').innerText = data.resourceIntro;
   const resourceGrid = document.getElementById('resource-grid');
